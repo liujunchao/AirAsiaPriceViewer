@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<div id="condition"></div>
+<div id="container" style="min-width: 310px; height: 400px; margin: 0 auto"></div>
+<div>
+    <input type="button" value="Pre" class="pre" />
+    <input type="button" value="Next" class="next"/>
+</div>
+
+</body>
+<script type="text/plain" id="countries">
+<div>
+{{for domesticCitiesList}}
+<label>
+    <input type="radio" value="{{:location}}" name="selectedCity" /><span>{{:desc}}</span>
+</label>
+{{/for}}
+<input type="button" value="Refress" class="refresh"/>
+</div>
+<div>
+{{for foreignCitiesList}}
+<label>
+    <input type="checkbox" value="{{:location}}" name="selectedCities"  /><span>{{:desc}}</span>
+</label>
+{{/for}}
+
+</div>
+</script>
+<script src="js/jquery-1.10.2.min.js"></script>
+<script src="js/jsrender.js"></script>
+<script src="js/highcharts.js"></script>
+<script src="js/test.js"></script>
+</html>
