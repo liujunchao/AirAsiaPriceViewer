@@ -63,7 +63,7 @@ pages=[]
 domesticCitiesList = []
 foreignCitiesList = []
 
-client = MongoClient('localhost', 27017)
+client = MongoClient('chaoyiyi.cn', 27017)
 db = client.location_collection
 cities1 = db.foreign_cities.find({})
 cities2 = db.china_cities.find({})
@@ -78,6 +78,8 @@ headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_5)AppleWeb
            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"}
 for chinaCity in domesticCitiesList:
     for foreignCity in foreignCitiesList:
+        if foreignCity["inuse"] == False:
+            continue
         fromCityCode = chinaCity["location"]
         toCityCode = foreignCity["location"]
         future = queryScrawRecordDate(db,fromCityCode,toCityCode)
