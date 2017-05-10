@@ -11,7 +11,8 @@ import time
 html = "<html><head><title>my title</title></head><body><ul id='myul' class='ulclass  cls2 cls3' data='ulData'><li>test</li><li>test</li></ul></body></html>"
 
 bsObj = BeautifulSoup(html, "html.parser")
-
+body = bsObj.find_all("body") #通过ID获取UL
+#print(body[0]["class"])
 ul = bsObj.find(id='myul') #通过ID获取UL
 for itm in ul.children:
     print(itm)#此处输出<li>test</li>

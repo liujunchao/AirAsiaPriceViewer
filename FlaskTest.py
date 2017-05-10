@@ -1,5 +1,7 @@
 from flask import Flask,jsonify,abort,make_response,request
 from DataHandler import getAllLocationData
+from business import fetcher
+
 app = Flask(__name__)
 import json
 
@@ -66,6 +68,13 @@ def get_flights():
     list = getAllLocationData()
     #list = json.dumps(list)
     return jsonify(list)
+
+@app.route('/api/scrawl', methods=['POST'])
+def scrawl():
+    rule  = request.form["rule"]
+    url = request.form["url"]
+    fetcher.parseHtml(url,rule)
+    return jsonify([])
 
 if __name__ == '__main__':
     app.run()
