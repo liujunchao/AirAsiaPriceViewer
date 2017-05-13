@@ -18,6 +18,7 @@ my_headers = [
 headers = {"User-Agent": "", "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"}
 
 
+
 def parseDom(scrawlDom,children):
     list = []
     idx = 0
@@ -30,7 +31,7 @@ def parseDom(scrawlDom,children):
             hasChildDomId = "id" in childDom.attrs
             childDomClsName = None
             if hasChildDomCls:
-                childDomClsName = " ".join(childDom["class"])
+                childDomClsName = (" ".join(childDom["class"])).strip()
                 if childDomClsName == "":
                     hasChildDomCls = False
             hasClsAndMatched = hasChildDomCls and hasScrawlDomCls and childDomClsName == scrawlDom["className"]
@@ -61,16 +62,48 @@ def parseDom(scrawlDom,children):
     return list
 
 def loopDom(scrawlDom,matchChildren):
+    found = []
     while True:
         if "child" not in scrawlDom:
+            if "children" in scrawlDom:
+                return loopDomChildren(scrawlDom["children"],found)
             return found
         else:
             scrawlDom = scrawlDom["child"]
+
         found = parseDom(scrawlDom, matchChildren)
         matchChildren = []
         for fndItm in found:
             for ele in fndItm.children:
                 matchChildren.append(ele)
+        if matchChildren.__len__() == 0:
+            scrawlDomInfo = scrawlDom["tagName"]
+            if "className" in scrawlDom:
+                scrawlDomInfo= " className="+scrawlDom["className"]
+            if "id" in scrawlDom:
+                scrawlDomInfo = " id=" + scrawlDom["id"]
+
+            if ele !=None:
+                print(" search dom tagname:"+ele.name)
+
+            print("find nothing,scrawlDom:"+scrawlDomInfo)
+            return found
+
+
+
+def loopDomChildren(scrawlDomList,matchChildren):
+    foundList = [];
+
+
+    for fndItm in matchChildren:
+        foundResult = []
+        for scrawlDom in scrawlDomList:
+            newScrawlDom = {}
+            newScrawlDom["child"] = scrawlDom
+            foundItm = loopDom(newScrawlDom, fndItm.children)
+            foundResult.append(foundItm)
+        foundList.append(foundResult)
+    return foundList
 
 
 
@@ -78,13 +111,14 @@ def parseHtml(url,rule):
     in_json = json.loads(rule)
     print(in_json)
 
-    useSelenium = False
+    useSelenium = True
     requestText = None
     if useSelenium:
-        driver = webdriver.Chrome()
+        driver = webdriver.PhantomJS()
         driver.get(url)
-        time.sleep(1)
+        time.sleep(5)
         requestText = driver.page_source
+        driver.quit()
     else:
         session = requests.Session()
         retryTimes = 0
@@ -95,6 +129,8 @@ def parseHtml(url,rule):
                 headers["Connection"] = "Connection:keep-alive"
                 headers["Cache-Control"] = "no-cache"
                 req = session.get(url, headers=headers ,timeout=None)
+                req.encoding = req.apparent_encoding
+
                 requestText = req.text
                 break
             except Exception as e:
@@ -106,10 +142,11 @@ def parseHtml(url,rule):
     bsObj = BeautifulSoup(requestText,"html.parser")
     scrawlDom = in_json;
     list = bsObj.find_all(scrawlDom["tagName"].lower())
-    found = []
+    allfound = []
     for ele in list:
-        for itm in loopDom(scrawlDom,ele.children):
-            found.append(itm)
+        result  = loopDom(scrawlDom,ele.children)
+        for itm in result:
+            allfound.append(itm)
     return
 
     # list = []
