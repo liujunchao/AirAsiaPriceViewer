@@ -4,7 +4,6 @@ import time
 import json
 import random
 from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
 
 
 
@@ -17,6 +16,7 @@ my_headers = [
 
 headers = {"User-Agent": "", "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"}
 
+elementsNotMatched = []
 
 
 def parseDom(scrawlDom,children):
@@ -72,19 +72,31 @@ def loopDom(scrawlDom,matchChildren):
             scrawlDom = scrawlDom["child"]
 
         found = parseDom(scrawlDom, matchChildren)
+        if found.__len__() == 0:
+            elementsNotMatched =[]
+            msgInfo = {}
+            for eleNotMatched in matchChildren:
+                if eleNotMatched == "\n":
+                    continue
+                if eleNotMatched.name != scrawlDom["tagName"].lower():
+                    continue
+                msgInfo["tagName"] = eleNotMatched.name
+                if "class" in eleNotMatched.attrs:
+                    msgInfo["className"] = (" ".join(eleNotMatched["class"])).strip()
+                if "id" in eleNotMatched.attrs:
+                    msgInfo["id"] = eleNotMatched["id"]
+                elementsNotMatched.append(eleNotMatched)
+            print("find nothing，got not matched elements")
         matchChildren = []
         for fndItm in found:
             for ele in fndItm.children:
                 matchChildren.append(ele)
-        if matchChildren.__len__() == 0:
+        if found.__len__() == 0:
             scrawlDomInfo = scrawlDom["tagName"]
             if "className" in scrawlDom:
                 scrawlDomInfo= " className="+scrawlDom["className"]
             if "id" in scrawlDom:
                 scrawlDomInfo = " id=" + scrawlDom["id"]
-
-            if ele !=None:
-                print(" search dom tagname:"+ele.name)
 
             print("find nothing,scrawlDom:"+scrawlDomInfo)
             return found
@@ -92,9 +104,7 @@ def loopDom(scrawlDom,matchChildren):
 
 
 def loopDomChildren(scrawlDomList,matchChildren):
-    foundList = [];
-
-
+    foundList = []
     for fndItm in matchChildren:
         foundResult = []
         for scrawlDom in scrawlDomList:
@@ -114,9 +124,9 @@ def parseHtml(url,rule):
     useSelenium = True
     requestText = None
     if useSelenium:
-        driver = webdriver.PhantomJS()
+        driver = webdriver.Chrome()
         driver.get(url)
-        time.sleep(5)
+        # time.sleep(12)
         requestText = driver.page_source
         driver.quit()
     else:
@@ -130,7 +140,6 @@ def parseHtml(url,rule):
                 headers["Cache-Control"] = "no-cache"
                 req = session.get(url, headers=headers ,timeout=None)
                 req.encoding = req.apparent_encoding
-
                 requestText = req.text
                 break
             except Exception as e:
@@ -141,20 +150,33 @@ def parseHtml(url,rule):
                     return
     bsObj = BeautifulSoup(requestText,"html.parser")
     scrawlDom = in_json;
-    list = bsObj.find_all(scrawlDom["tagName"].lower())
-    allfound = []
-    for ele in list:
-        result  = loopDom(scrawlDom,ele.children)
-        for itm in result:
-            allfound.append(itm)
-    return
+    htmlTags = bsObj.find_all(scrawlDom["tagName"].lower())
 
-    # list = []
-    # for row in rows:
-    #     rowOfFareLight = row.findAll("tr",{"class","fare-light-row"})
-    #     if len(rowOfFareLight)>0:
-    #         startHour = row.findAll("td",{"class":"avail-table-detail"})[0].getText()
-    #         endHour = row.findAll("td",{"class":"avail-table-detail"})[1].getText()
-    #         price = row.findAll("div",{"class":"avail-fare-price"})[0].getText()
-    # return list
-#list = parseHtml("http://www.csdn.net")
+    result = loopDom(scrawlDom, htmlTags[0].children)
+
+    allfound = []
+    for itm in result:
+        jObj = convertDomToJson(itm)
+        allfound.append(jObj)
+    resultJson = {}
+    if elementsNotMatched.__len__() != 0:
+        resultJson["status"] = "failure"
+        resultJson["result"] = elementsNotMatched
+    else:
+        resultJson["status"] = "success"
+        resultJson["result"] = allfound
+
+    return resultJson
+
+def convertDomToJson(bsDom):
+    if type(bsDom) == list:
+        jList = []
+        for subDom in bsDom:
+            subDomJson = convertDomToJson(subDom)
+            jList.append(subDomJson)
+        return jList
+    itmJson = {}
+    itmJson["content"] = bsDom.text
+    if bsDom.name == "a":
+        itmJson["href"] = bsDom.attrs["href"]
+    return itmJson

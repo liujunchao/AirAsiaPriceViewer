@@ -1,7 +1,7 @@
 from flask import Flask,jsonify,abort,make_response,request
 from DataHandler import getAllLocationData
 from business import fetcher
-
+from business import MongodbHelper
 app = Flask(__name__)
 import json
 
@@ -73,8 +73,40 @@ def get_flights():
 def scrawl():
     rule  = request.form["rule"]
     url = request.form["url"]
-    fetcher.parseHtml(url,rule)
-    return jsonify([])
+    obj = fetcher.parseHtml(url,rule)
+    return jsonify(obj)
+
+@app.route('/api/saveTopic', methods=['POST'])
+def saveTopic():
+    try:
+        obj  = {}
+        obj["url"] = request.form["url"]
+        obj["rule"] = request.form["rule"]
+        obj["topic"] = request.form["topic"]
+        obj["scrawlType"] = request.form["scrawlType"]
+        MongodbHelper.saveTopic(obj)
+    except Exception:
+        return jsonify({
+            "status": "failure",
+            "message":Exception
+        })
+    return jsonify({
+        "status":"success"
+    })
+
+
+@app.route('/api/findTopics', methods=['POST'])
+def findTopics():
+    topics = []
+    list =  MongodbHelper.findTopics()
+    for record in list:
+        record["_id"] = str(record["_id"])
+        topics.append(record)
+    return jsonify({
+        "status":"success",
+        "data":topics
+    })
+
 
 if __name__ == '__main__':
     app.run()
