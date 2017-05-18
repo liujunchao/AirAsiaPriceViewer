@@ -4,7 +4,8 @@ import time
 import json
 import random
 from selenium import webdriver
-
+from business import MongodbHelper
+from business import urlAnalysis
 
 
 my_headers = [
@@ -72,6 +73,8 @@ def loopDom(scrawlDom,matchChildren):
             scrawlDom = scrawlDom["child"]
 
         found = parseDom(scrawlDom, matchChildren)
+
+
         if found.__len__() == 0:
             elementsNotMatched =[]
             msgInfo = {}
@@ -88,7 +91,12 @@ def loopDom(scrawlDom,matchChildren):
                 elementsNotMatched.append(eleNotMatched)
             print("find nothing，got not matched elements")
         matchChildren = []
+        hasRelatedTopic = "relatedTopic" in scrawlDom
+        if hasRelatedTopic:
+            topicRule = MongodbHelper.getTopicByObjectId(scrawlDom["relatedTopic"])
         for fndItm in found:
+            if hasRelatedTopic:
+                fndItm["relatedTopic"] = topicRule
             for ele in fndItm.children:
                 matchChildren.append(ele)
         if found.__len__() == 0:
@@ -117,7 +125,7 @@ def loopDomChildren(scrawlDomList,matchChildren):
 
 
 
-def parseHtml(url,rule):
+def getFoundHtml(url,rule):
     in_json = json.loads(rule)
     print(in_json)
 
@@ -156,15 +164,22 @@ def parseHtml(url,rule):
 
     allfound = []
     for itm in result:
+        for content in itm.strings:
+            print(content)
         jObj = convertDomToJson(itm)
         allfound.append(jObj)
+    return allfound
+
+
+def parseHtml(url,rule):
+    foundHtml = getFoundHtml(url,rule)
     resultJson = {}
     if elementsNotMatched.__len__() != 0:
         resultJson["status"] = "failure"
         resultJson["result"] = elementsNotMatched
     else:
         resultJson["status"] = "success"
-        resultJson["result"] = allfound
+        resultJson["result"] = foundHtml
 
     return resultJson
 
@@ -179,4 +194,11 @@ def convertDomToJson(bsDom):
     itmJson["content"] = bsDom.text
     if bsDom.name == "a":
         itmJson["href"] = bsDom.attrs["href"]
+        if "relatedTopic" in bsDom.attrs:
+            relatedTopic = bsDom["relatedTopic"]
+            print("fetch link content:"+ relatedTopic["topic"]+", href:"+itmJson["href"])
+            newPath = urlAnalysis.getPath(relatedTopic["url"],itmJson["href"])
+            itmJson["linkContent"] = getFoundHtml(newPath,relatedTopic["rule"])
+
     return itmJson
+
