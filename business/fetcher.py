@@ -36,6 +36,10 @@ def parseDom(scrawlDom,children):
                 if childDomClsName == "":
                     hasChildDomCls = False
             hasClsAndMatched = hasChildDomCls and hasScrawlDomCls and childDomClsName == scrawlDom["className"]
+            if "rel" in scrawlDom and scrawlDom["rel"] == "sub":
+                hasClsAndMatched = hasChildDomCls and hasScrawlDomCls and scrawlDom["className"] in childDomClsName
+            if "rel" in scrawlDom and scrawlDom["rel"] == "sup":
+                hasClsAndMatched = hasChildDomCls and hasScrawlDomCls and childDomClsName in scrawlDom["className"]
             hasIdAndMatched = hasChildDomId and hasScrawlDomId and childDom["id"] == scrawlDom["id"]
             if childDom.name == "body" or childDom.name == "html":
                 list.append(childDom)
@@ -125,18 +129,23 @@ def loopDomChildren(scrawlDomList,matchChildren):
 
 
 
-def getFoundHtml(url,rule):
+def getFoundHtml(url,rule,scrawlType):
     in_json = json.loads(rule)
     print(in_json)
 
-    useSelenium = True
+    useSelenium = True if scrawlType == "webdriver.chrome" else False
     requestText = None
     if useSelenium:
-        driver = webdriver.Chrome()
-        driver.get(url)
-        # time.sleep(12)
-        requestText = driver.page_source
-        driver.quit()
+        try:
+            driver = webdriver.Chrome()
+            driver.set_page_load_timeout(60)
+            driver.get(url)
+            # time.sleep(12)
+            requestText = driver.page_source
+            driver.quit()
+        except Exception as e:
+            print(Exception, ":", e)
+            return []
     else:
         session = requests.Session()
         retryTimes = 0
@@ -171,8 +180,8 @@ def getFoundHtml(url,rule):
     return allfound
 
 
-def parseHtml(url,rule):
-    foundHtml = getFoundHtml(url,rule)
+def parseHtml(url,rule,scrawlType):
+    foundHtml = getFoundHtml(url,rule,scrawlType)
     resultJson = {}
     if elementsNotMatched.__len__() != 0:
         resultJson["status"] = "failure"
@@ -198,7 +207,7 @@ def convertDomToJson(bsDom):
             relatedTopic = bsDom["relatedTopic"]
             print("fetch link content:"+ relatedTopic["topic"]+", href:"+itmJson["href"])
             newPath = urlAnalysis.getPath(relatedTopic["url"],itmJson["href"])
-            itmJson["linkContent"] = getFoundHtml(newPath,relatedTopic["rule"])
+            itmJson["linkContent"] = getFoundHtml(newPath,relatedTopic["rule"],relatedTopic["scrawlType"])
 
     return itmJson
 

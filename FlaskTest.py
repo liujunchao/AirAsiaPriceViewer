@@ -73,7 +73,8 @@ def get_flights():
 def scrawl():
     rule  = request.form["rule"]
     url = request.form["url"]
-    obj = fetcher.parseHtml(url,rule)
+    scrawlType  =request.form["scrawlType"]
+    obj = fetcher.parseHtml(url,rule,scrawlType)
     return jsonify(obj)
 
 @app.route('/api/saveTopic', methods=['POST'])
